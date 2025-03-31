@@ -42,16 +42,6 @@ export const extractEditableFields = (json: any): EditableField[] => {
               }
               break;
               
-            case "image":
-              if (widget.settings?.image?.url) {
-                result.push({
-                  type: "image",
-                  path: `${currentPath}.settings.image.url`,
-                  value: widget.settings.image.url
-                });
-              }
-              break;
-              
             case "button":
               if (widget.settings?.text) {
                 result.push({
@@ -60,13 +50,7 @@ export const extractEditableFields = (json: any): EditableField[] => {
                   value: widget.settings.text
                 });
               }
-              if (widget.settings?.link?.url) {
-                result.push({
-                  type: "button-link",
-                  path: `${currentPath}.settings.link.url`,
-                  value: widget.settings.link.url
-                });
-              }
+              // We're now skipping link extraction
               break;
               
             // You can add more widget types as needed

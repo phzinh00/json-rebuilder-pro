@@ -26,6 +26,7 @@ const JsonTextArea: React.FC<JsonTextAreaProps> = ({
   showActions = true,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
@@ -72,7 +73,7 @@ const JsonTextArea: React.FC<JsonTextAreaProps> = ({
   return (
     <div className="flex flex-col w-full gap-2">
       <div className="flex justify-between items-center">
-        <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        <label htmlFor={id} className="text-sm font-medium text-[#222222]">
           {label}
         </label>
         {showActions && value && (
@@ -81,7 +82,7 @@ const JsonTextArea: React.FC<JsonTextAreaProps> = ({
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="h-8 px-2 text-xs"
+              className="h-8 px-3 text-xs border-black text-black hover:bg-black hover:text-white transition-colors"
             >
               {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
               {copied ? "Copiado" : "Copiar"}
@@ -90,7 +91,7 @@ const JsonTextArea: React.FC<JsonTextAreaProps> = ({
               variant="outline"
               size="sm"
               onClick={handleDownload}
-              className="h-8 px-2 text-xs"
+              className="h-8 px-3 text-xs border-black text-black hover:bg-black hover:text-white transition-colors"
             >
               <Download className="h-4 w-4 mr-1" />
               Baixar
@@ -98,15 +99,33 @@ const JsonTextArea: React.FC<JsonTextAreaProps> = ({
           </div>
         )}
       </div>
-      <textarea
-        ref={textareaRef}
-        id={id}
-        value={value}
-        onChange={e => onChange && onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full ${height} p-3 border border-gray-300 rounded-md mono bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none`}
-        readOnly={readOnly}
-      />
+      <div 
+        className={`relative overflow-hidden rounded-md transition-all duration-300 ${hovered ? 'shadow-md' : ''}`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <textarea
+          ref={textareaRef}
+          id={id}
+          value={value}
+          onChange={e => onChange && onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full ${height} p-4 border border-[#ccc] rounded-md mono bg-white text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all duration-300`}
+          readOnly={readOnly}
+        />
+        {readOnly && (
+          <div className="absolute top-0 right-0 m-2 opacity-0 transition-opacity duration-300 hover:opacity-100">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              className="h-7 px-2 text-xs bg-white/80 backdrop-blur-sm border-black text-black hover:bg-black hover:text-white"
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

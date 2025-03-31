@@ -11,6 +11,7 @@ import {
   isValidJson,
   type EditableField 
 } from "@/utils/jsonProcessor";
+import { ArrowRight, ChevronRight } from "lucide-react";
 
 const JsonRebuildApp: React.FC = () => {
   // State for the original JSON input
@@ -182,19 +183,34 @@ const JsonRebuildApp: React.FC = () => {
 
   return (
     <div className="container py-6">
-      <Card className="w-full bg-white shadow-md">
-        <CardHeader className="bg-gradient-to-r from-primary to-accent text-white">
-          <CardTitle className="text-2xl">JSON Rebuilder Pro para Elementor</CardTitle>
-          <CardDescription className="text-white/90">
+      <Card className="w-full bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
+        <CardHeader className="bg-black text-white">
+          <CardTitle className="text-2xl font-light">JSON Rebuilder Pro</CardTitle>
+          <CardDescription className="text-[#c8c8c9]">
             Extraia, edite e reconstrua JSON do Elementor com facilidade
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <Tabs defaultValue="extract" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="extract">1. Extrair Campos</TabsTrigger>
-              <TabsTrigger value="rebuild">2. Preencher & Reconstruir</TabsTrigger>
-              <TabsTrigger value="result">3. Resultado Final</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 mb-6 bg-[#f3f3f3]">
+              <TabsTrigger 
+                value="extract" 
+                className="data-[state=active]:bg-black data-[state=active]:text-white"
+              >
+                1. Extrair Campos
+              </TabsTrigger>
+              <TabsTrigger 
+                value="rebuild" 
+                className="data-[state=active]:bg-black data-[state=active]:text-white"
+              >
+                2. Preencher & Reconstruir
+              </TabsTrigger>
+              <TabsTrigger 
+                value="result" 
+                className="data-[state=active]:bg-black data-[state=active]:text-white"
+              >
+                3. Resultado Final
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="extract" className="space-y-4">
@@ -211,9 +227,10 @@ const JsonRebuildApp: React.FC = () => {
                 <div className="flex justify-end">
                   <Button 
                     onClick={handleExtractFields} 
-                    className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
+                    className="bg-black hover:bg-[#333] text-white transition-colors flex items-center gap-2 group"
                   >
                     Extrair Campos Editáveis
+                    <ChevronRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
                   </Button>
                 </div>
 
@@ -243,9 +260,10 @@ const JsonRebuildApp: React.FC = () => {
                 <div className="flex justify-end">
                   <Button 
                     onClick={handleRebuildJson}
-                    className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
+                    className="bg-black hover:bg-[#333] text-white transition-colors flex items-center gap-2 group"
                   >
                     Reconstruir JSON Completo
+                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
                   </Button>
                 </div>
               </div>
@@ -261,7 +279,7 @@ const JsonRebuildApp: React.FC = () => {
                   height="h-96"
                 />
               ) : (
-                <div className="text-center py-10 text-gray-500">
+                <div className="text-center py-10 text-[#999] border border-dashed border-[#ccc] rounded-md">
                   <p>Preencha os campos nas etapas anteriores para ver o resultado aqui.</p>
                 </div>
               )}
@@ -269,7 +287,7 @@ const JsonRebuildApp: React.FC = () => {
           </Tabs>
 
           {errors && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+            <div className="mt-4 p-3 bg-[#fff0f0] border border-red-200 rounded text-red-600 text-sm">
               {errors}
             </div>
           )}
