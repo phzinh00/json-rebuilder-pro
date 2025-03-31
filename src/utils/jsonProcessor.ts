@@ -83,9 +83,10 @@ export const extractEditableFields = (json: any): EditableField[] => {
         }
         
         // Recursively process inner sections or columns
-        if (widget.elements || widget.widgets) {
-          const childWidgets = widget.elements || widget.widgets;
-          processWidgets(childWidgets, currentPath);
+        if (widget.elements) {
+          processWidgets(widget.elements, `${currentPath}.elements`);
+        } else if (widget.widgets) {
+          processWidgets(widget.widgets, `${currentPath}.widgets`);
         }
       });
     };
