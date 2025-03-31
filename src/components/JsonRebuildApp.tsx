@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,26 +32,6 @@ const JsonRebuildApp: React.FC = () => {
   const [errors, setErrors] = useState<string>("");
 
   const { toast } = useToast();
-
-  // Load data from localStorage if available on component mount
-  useEffect(() => {
-    const savedOriginalJson = localStorage.getItem("elementor-original-json");
-    const savedCleanJson = localStorage.getItem("elementor-clean-json");
-    
-    if (savedOriginalJson) {
-      setOriginalJson(savedOriginalJson);
-      try {
-        setParsedOriginalJson(JSON.parse(savedOriginalJson));
-      } catch (e) {
-        console.error("Error parsing saved original JSON:", e);
-      }
-    }
-    
-    if (savedCleanJson) {
-      setCleanJsonString(savedCleanJson);
-      setUpdatedFieldsInput(savedCleanJson);
-    }
-  }, []);
 
   // Process the original JSON to extract editable fields
   const handleExtractFields = () => {
@@ -90,10 +70,6 @@ const JsonRebuildApp: React.FC = () => {
       
       // Clear any previous errors
       setErrors("");
-      
-      // Save to localStorage for persistence
-      localStorage.setItem("elementor-original-json", originalJson);
-      localStorage.setItem("elementor-clean-json", cleanJson);
       
       // Show success message
       toast({
