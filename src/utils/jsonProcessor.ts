@@ -1,4 +1,3 @@
-
 import { set, get } from "lodash";
 
 export interface EditableField {
@@ -86,7 +85,7 @@ export const extractEditableFields = (json: any): EditableField[] => {
         if (widget.elements) {
           processWidgets(widget.elements, `${currentPath}.elements`);
         } else if (widget.widgets) {
-          processWidgets(widget.widgets, `${currentPath}.widgets`);
+          processWidgets(widget.widgets, currentPath);  // Corrigido: Removi .widgets para evitar duplicação
         }
       });
     };
@@ -117,11 +116,26 @@ export const rebuildJsonWithUpdatedFields = (
     // Update each field in the JSON
     updatedFields.forEach(field => {
       try {
-        // Check if the path exists before updating
-        if (get(resultJson, field.path) !== undefined) {
-          set(resultJson, field.path, field.value);
+        // Verificar se o path está formatado corretamente
+        const cleanPath = field.path.replace(/\.\./g, '.').replace(/^\./, '');
+        
+        // Verificar se o path existe antes de atualizar
+        if (get(resultJson, cleanPath) !== undefined) {
+          set(resultJson, cleanPath, field.value);
         } else {
-          console.warn(`Path not found in original JSON: ${field.path}`);
+          // Tentar variações do path se o caminho original não for encontrado
+          const pathParts = cleanPath.split('.');
+          const lastPart = pathParts[pathParts.length - 1];
+          const parentPath = pathParts.slice(0, -1).join('.');
+          
+          const parent = get(resultJson, parentPath);
+          if (parent && typeof parent === 'object') {
+            // Verificar se o pai existe e é um objeto
+            set(resultJson, cleanPath, field.value);
+            console.log(`Field updated at path: ${cleanPath}`);
+          } else {
+            console.warn(`Path not found in original JSON: ${cleanPath}`);
+          }
         }
       } catch (e) {
         console.error(`Error updating field at path: ${field.path}`, e);
