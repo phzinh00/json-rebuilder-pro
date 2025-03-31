@@ -7,95 +7,43 @@ export interface EditableField {
   value: string | null;
 }
 
-// Process the original Elementor JSON to extract editable fields
+/**
+ * Extrai campos editáveis do JSON do Elementor
+ * Suporta tanto widgets individuais quanto estruturas completas de página
+ */
 export const extractEditableFields = (json: any): EditableField[] => {
   try {
     const result: EditableField[] = [];
     
-    // Process widgets recursively
-    const processWidgets = (widgets: any[], basePath: string = "") => {
-      if (!Array.isArray(widgets)) return;
+    // Verifica se estamos lidando com um widget individual ou uma estrutura completa
+    if (isElementorWidget(json)) {
+      // Caso 1: Processando um widget individual (como o exemplo fornecido)
+      processWidget(json, "", result);
+    } else if (json.widgets || json.elements) {
+      // Caso 2: Processando uma estrutura completa com múltiplos widgets
+      const processWidgets = (widgets: any[], basePath: string = "") => {
+        if (!Array.isArray(widgets)) return;
+        
+        widgets.forEach((widget, index) => {
+          const currentPath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+          processWidget(widget, currentPath, result);
+          
+          // Processa widgets aninhados
+          if (Array.isArray(widget.elements)) {
+            processWidgets(widget.elements, `${currentPath}.elements`);
+          }
+          if (Array.isArray(widget.widgets)) {
+            processWidgets(widget.widgets, `${currentPath}.widgets`);
+          }
+        });
+      };
       
-      widgets.forEach((widget, index) => {
-        // Construir o caminho corretamente
-        const currentPath = basePath ? `${basePath}[${index}]` : `[${index}]`;
-        
-        // Check widget type
-        if (widget.widgetType) {
-          // Skip dividers and widgets without meaningful content
-          if (widget.widgetType === "divider" || widget.widgetType === "spacer") {
-            return;
-          }
-
-          // Process each type of widget and its editable fields
-          switch (widget.widgetType) {
-            case "heading":
-              if (widget.settings?.title && widget.settings.title.trim() !== "") {
-                result.push({
-                  type: "heading",
-                  path: `${currentPath}.settings.title`,
-                  value: widget.settings.title
-                });
-              }
-              break;
-              
-            case "text-editor":
-              if (widget.settings?.editor && widget.settings.editor.trim() !== "") {
-                result.push({
-                  type: "text-editor",
-                  path: `${currentPath}.settings.editor`,
-                  value: widget.settings.editor
-                });
-              }
-              break;
-              
-            case "button":
-              if (widget.settings?.text && widget.settings.text.trim() !== "") {
-                result.push({
-                  type: "button",
-                  path: `${currentPath}.settings.text`,
-                  value: widget.settings.text
-                });
-              }
-              break;
-              
-            default:
-              // Generic search for common fields in other widget types
-              if (widget.settings) {
-                // Check for common field patterns
-                for (const [key, value] of Object.entries(widget.settings)) {
-                  if (
-                    typeof value === "string" && 
-                    ["title", "text", "content", "description", "caption"].includes(key) &&
-                    value.trim() !== ""
-                  ) {
-                    result.push({
-                      type: key,
-                      path: `${currentPath}.settings.${key}`,
-                      value: value
-                    });
-                  }
-                }
-              }
-              break;
-          }
-        }
-        
-        // Recursively process inner sections or columns
-        if (Array.isArray(widget.elements)) {
-          processWidgets(widget.elements, `${currentPath}.elements`);
-        }
-        if (Array.isArray(widget.widgets)) {
-          processWidgets(widget.widgets, `${currentPath}.widgets`);
-        }
-      });
-    };
-    
-    // Start processing from the top level
-    if (Array.isArray(json.widgets)) {
-      processWidgets(json.widgets, "widgets");
-    } else if (Array.isArray(json.elements)) {
-      processWidgets(json.elements, "elements");
+      // Inicia o processamento a partir do nível superior
+      if (Array.isArray(json.widgets)) {
+        processWidgets(json.widgets, "widgets");
+      } else if (Array.isArray(json.elements)) {
+        processWidgets(json.elements, "elements");
+      }
     }
     
     return result;
@@ -105,87 +53,186 @@ export const extractEditableFields = (json: any): EditableField[] => {
   }
 };
 
-// Função auxiliar para resolver paths
-const resolvePath = (path: string): string => {
-  // Converte expressões como widgets[0] para widgets.0
-  return path.replace(/\[(\d+)\]/g, '.$1');
+/**
+ * Verifica se o objeto é um widget do Elementor
+ */
+const isElementorWidget = (obj: any): boolean => {
+  // Widgets do Elementor geralmente têm widgetType ou settings
+  return (obj && (obj.widgetType || (obj.settings && typeof obj.settings === 'object')));
 };
 
-// Rebuild the original JSON with updated values
+/**
+ * Processa um único widget do Elementor para extrair campos editáveis
+ */
+const processWidget = (widget: any, path: string, result: EditableField[]) => {
+  // Caso 1: Widget com tipo específico
+  if (widget.widgetType) {
+    // Padrão para widgets com widgetType
+    switch (widget.widgetType) {
+      case "heading":
+        if (widget.settings?.title && widget.settings.title.trim() !== "") {
+          result.push({
+            type: "heading",
+            path: path ? `${path}.settings.title` : `settings.title`,
+            value: widget.settings.title
+          });
+        }
+        break;
+        
+      case "text-editor":
+        if (widget.settings?.editor && widget.settings.editor.trim() !== "") {
+          result.push({
+            type: "text-editor",
+            path: path ? `${path}.settings.editor` : `settings.editor`,
+            value: widget.settings.editor
+          });
+        }
+        break;
+        
+      case "button":
+        if (widget.settings?.text && widget.settings.text.trim() !== "") {
+          result.push({
+            type: "button",
+            path: path ? `${path}.settings.text` : `settings.text`,
+            value: widget.settings.text
+          });
+        }
+        break;
+        
+      default:
+        // Processamento genérico para outros tipos de widgets
+        processGenericWidgetSettings(widget, path, result);
+        break;
+    }
+  } 
+  // Caso 2: Objeto que parece ser um widget mas sem widgetType (como o exemplo fornecido)
+  else if (widget.title || widget.editor || widget.text) {
+    // Widget sem widgetType explícito (como no exemplo)
+    const keys = ["title", "editor", "text", "content", "description", "caption"];
+    
+    for (const key of keys) {
+      if (widget[key] && typeof widget[key] === "string" && widget[key].trim() !== "") {
+        result.push({
+          type: key,
+          path: path ? `${path}.${key}` : key,
+          value: widget[key]
+        });
+      }
+    }
+  }
+};
+
+/**
+ * Processa campos genéricos de configurações de widgets
+ */
+const processGenericWidgetSettings = (widget: any, path: string, result: EditableField[]) => {
+  if (!widget.settings) return;
+  
+  // Campos comuns que geralmente contêm texto editável
+  const commonFields = [
+    "title", "text", "editor", "content", "description", 
+    "caption", "button_text", "heading", "sub_heading"
+  ];
+  
+  for (const field of commonFields) {
+    if (widget.settings[field] && 
+        typeof widget.settings[field] === "string" && 
+        widget.settings[field].trim() !== "") {
+      
+      result.push({
+        type: field,
+        path: path ? `${path}.settings.${field}` : `settings.${field}`,
+        value: widget.settings[field]
+      });
+    }
+  }
+};
+
+/**
+ * Atualiza o JSON original com os campos modificados
+ */
 export const rebuildJsonWithUpdatedFields = (
   originalJson: any, 
   updatedFields: EditableField[]
 ): any => {
   try {
-    // Usar cloneDeep do lodash para garantir uma cópia profunda
+    // Criar cópia profunda do JSON original
     const resultJson = cloneDeep(originalJson);
     
-    // Update each field in the JSON
-    updatedFields.forEach(field => {
+    // Atualizar cada campo
+    for (const field of updatedFields) {
       try {
-        // Resolver e normalizar o path
-        const normalizedPath = resolvePath(field.path);
+        // Normalizar o caminho (remover índices de array se for um widget individual)
+        let fieldPath = field.path;
         
-        console.log(`Tentando atualizar: ${normalizedPath} com valor: ${field.value}`);
+        // Se for um widget individual e o caminho começa com 'settings'
+        if (isElementorWidget(originalJson) && fieldPath.startsWith('settings.')) {
+          // Não precisamos modificar o caminho
+        } 
+        // Se o caminho tiver notação de array, precisamos ajustá-lo para o formato do lodash
+        else if (fieldPath.includes('[')) {
+          fieldPath = fieldPath.replace(/\[(\d+)\]/g, '.$1');
+        }
         
-        // Verificar caminho em diferentes formatos
-        if (get(resultJson, normalizedPath) !== undefined) {
-          set(resultJson, normalizedPath, field.value);
-          console.log(`✓ Campo atualizado com sucesso: ${normalizedPath}`);
+        console.log(`Atualizando campo: ${fieldPath}`);
+        
+        // Verificar se o caminho existe
+        if (get(resultJson, fieldPath) !== undefined) {
+          set(resultJson, fieldPath, field.value);
+          console.log(`Campo atualizado com sucesso: ${fieldPath}`);
         } else {
-          // Tentar encontrar o caminho pai
-          const pathParts = normalizedPath.split('.');
-          let testPath = '';
-          let foundPath = false;
+          console.warn(`Caminho não encontrado: ${fieldPath}`);
           
-          // Testar progressivamente partes do caminho para encontrar onde falha
-          for (let i = 0; i < pathParts.length; i++) {
-            testPath = pathParts.slice(0, i + 1).join('.');
-            if (get(resultJson, testPath) === undefined) {
-              console.warn(`Parte do caminho não encontrada: ${testPath}`);
-              
-              // Verificar se podemos criar esta parte
-              const parentPath = pathParts.slice(0, i).join('.');
-              const parent = get(resultJson, parentPath);
-              
-              if (parent && typeof parent === 'object') {
-                // Se o índice for numérico, garantir que temos um array
-                const key = pathParts[i];
-                if (!isNaN(parseInt(key))) {
-                  if (!Array.isArray(parent)) {
-                    console.warn(`Pai não é um array para índice: ${key}`);
-                    break;
-                  }
-                }
-                
-                // Criar valor padrão (vazio) para o caminho que falta
-                const defaultValue = !isNaN(parseInt(pathParts[i+1] || '')) ? [] : {};
-                set(resultJson, testPath, defaultValue);
-                console.log(`Criado valor padrão em: ${testPath}`);
-              } else {
-                break;
-              }
+          // Tentar caminhos alternativos para esse campo
+          const alternatePaths = getAlternatePaths(fieldPath);
+          let updated = false;
+          
+          for (const altPath of alternatePaths) {
+            if (get(resultJson, altPath) !== undefined) {
+              set(resultJson, altPath, field.value);
+              console.log(`Campo atualizado com caminho alternativo: ${altPath}`);
+              updated = true;
+              break;
             }
           }
           
-          // Tentar definir o valor no caminho completo após correções
-          try {
-            set(resultJson, normalizedPath, field.value);
-            console.log(`✓ Campo criado e atualizado: ${normalizedPath}`);
-          } catch (e) {
-            console.error(`Impossível atualizar: ${normalizedPath}`, e);
+          if (!updated) {
+            console.error(`Não foi possível encontrar um caminho válido para: ${fieldPath}`);
           }
         }
-      } catch (e) {
-        console.error(`Erro ao atualizar campo em: ${field.path}`, e);
+      } catch (error) {
+        console.error(`Erro ao atualizar campo: ${field.path}`, error);
       }
-    });
+    }
     
     return resultJson;
   } catch (error) {
-    console.error("Error rebuilding JSON:", error);
-    throw new Error("Failed to rebuild JSON with updated fields");
+    console.error("Erro ao reconstruir JSON:", error);
+    throw new Error("Falha ao reconstruir JSON com campos atualizados");
   }
+};
+
+/**
+ * Gera caminhos alternativos para o mesmo campo
+ */
+const getAlternatePaths = (path: string): string[] => {
+  const alternatePaths = [];
+  
+  // Remover 'settings.' do início
+  if (path.startsWith('settings.')) {
+    alternatePaths.push(path.substring(9));
+  } else {
+    // Adicionar 'settings.' ao início
+    alternatePaths.push(`settings.${path}`);
+  }
+  
+  // Versão com notação de array convertida
+  alternatePaths.push(path.replace(/\.\d+\./g, (match) => {
+    const index = match.substring(1, match.length - 1);
+    return `[${index}].`;
+  }));
+  
+  return alternatePaths;
 };
 
 // Validate if the string is a valid JSON
@@ -198,44 +245,32 @@ export const isValidJson = (str: string): boolean => {
   }
 };
 
-// Função de teste para verificar se a extração e reconstrução funcionam corretamente
-export const testJsonProcessing = (json: any): void => {
-  try {
-    console.log("Iniciando teste de processamento JSON...");
-    
-    // 1. Extrair campos editáveis
-    const fields = extractEditableFields(json);
-    console.log(`Extraídos ${fields.length} campos editáveis`);
-    
-    // Mostrar os campos extraídos
-    fields.forEach((field, index) => {
-      console.log(`Campo ${index+1}: ${field.type} - ${field.path} = "${field.value}"`);
-    });
-    
-    // 2. Modificar alguns campos para teste
-    if (fields.length > 0) {
-      const modifiedFields = fields.map(field => ({
-        ...field,
-        value: `${field.value} (MODIFICADO)`
-      }));
-      
-      // 3. Reconstruir o JSON com os campos modificados
-      const rebuiltJson = rebuildJsonWithUpdatedFields(json, modifiedFields);
-      
-      // 4. Extrair novamente para verificar se as modificações persistiram
-      const newFields = extractEditableFields(rebuiltJson);
-      
-      // Verificar se os valores modificados estão presentes
-      let allUpdated = true;
-      newFields.forEach((field, index) => {
-        const modified = field.value && field.value.includes("(MODIFICADO)");
-        console.log(`Campo ${index+1} atualizado: ${modified ? "✓" : "✗"} - "${field.value}"`);
-        if (!modified) allUpdated = false;
-      });
-      
-      console.log(`Teste concluído. Todos os campos atualizados: ${allUpdated ? "SIM" : "NÃO"}`);
-    }
-  } catch (error) {
-    console.error("Erro durante o teste:", error);
-  }
+// Função para teste de extração e atualização
+export const testElementorJson = (json: any) => {
+  console.log("Testando processamento de JSON do Elementor...");
+  
+  // 1. Extrair campos
+  const fields = extractEditableFields(json);
+  console.log(`Extraídos ${fields.length} campos editáveis`);
+  fields.forEach((f, i) => console.log(`Campo ${i+1}: ${f.type} - ${f.path} = "${f.value}"`));
+  
+  // 2. Modificar campos (exemplo)
+  const modifiedFields = fields.map(f => ({
+    ...f,
+    value: `${f.value} (MODIFICADO)`
+  }));
+  
+  // 3. Reconstruir JSON
+  const updatedJson = rebuildJsonWithUpdatedFields(json, modifiedFields);
+  
+  // 4. Verificar campos atualizados
+  const newFields = extractEditableFields(updatedJson);
+  console.log("\nVerificando atualizações:");
+  
+  newFields.forEach((f, i) => {
+    const isModified = f.value?.includes("(MODIFICADO)");
+    console.log(`Campo ${i+1}: ${isModified ? "✓" : "✗"} - ${f.path} = "${f.value}"`);
+  });
+  
+  return updatedJson;
 };
