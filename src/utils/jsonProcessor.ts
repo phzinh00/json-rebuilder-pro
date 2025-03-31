@@ -20,10 +20,15 @@ export const extractEditableFields = (json: any): EditableField[] => {
         
         // Check widget type
         if (widget.widgetType) {
+          // Skip dividers and widgets without meaningful content
+          if (widget.widgetType === "divider" || widget.widgetType === "spacer") {
+            return;
+          }
+
           // Process each type of widget and its editable fields
           switch (widget.widgetType) {
             case "heading":
-              if (widget.settings?.title) {
+              if (widget.settings?.title && widget.settings.title.trim() !== "") {
                 result.push({
                   type: "heading",
                   path: `${currentPath}.settings.title`,
@@ -33,7 +38,7 @@ export const extractEditableFields = (json: any): EditableField[] => {
               break;
               
             case "text-editor":
-              if (widget.settings?.editor) {
+              if (widget.settings?.editor && widget.settings.editor.trim() !== "") {
                 result.push({
                   type: "text-editor",
                   path: `${currentPath}.settings.editor`,
@@ -43,7 +48,7 @@ export const extractEditableFields = (json: any): EditableField[] => {
               break;
               
             case "button":
-              if (widget.settings?.text) {
+              if (widget.settings?.text && widget.settings.text.trim() !== "") {
                 result.push({
                   type: "button",
                   path: `${currentPath}.settings.text`,
@@ -62,7 +67,8 @@ export const extractEditableFields = (json: any): EditableField[] => {
                 for (const [key, value] of Object.entries(widget.settings)) {
                   if (
                     typeof value === "string" && 
-                    ["title", "text", "content", "description", "caption"].includes(key)
+                    ["title", "text", "content", "description", "caption"].includes(key) &&
+                    value.trim() !== ""
                   ) {
                     result.push({
                       type: key,
